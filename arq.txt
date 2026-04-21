@@ -1,0 +1,155 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    int id;
+    char nome[50];
+    char disciplina[50];
+    char turmas[30];
+} Professor;
+
+typedef struct {
+    int id;
+    char nome[50];
+    char serie[20];
+    char turno[20];
+} Aluno;
+
+void buscarProfessor(Professor lista[], int tam);
+void buscarAluno(Aluno lista[], int tam);
+
+int main() {
+    Professor listaProfs[10] = {
+        {101, "Carlos Silva", "Matematica", "Turma A"},
+        {102, "Ana Souza", "Fisica", "Turma C"},
+        {103, "Marcos Santos", "Quimica", "Turma A"},
+        {104, "Juliana Costa", "Biologia", "Turma B"},
+        {105, "Fernanda Lima", "Historia", "Turma A"},
+        {106, "Roberto Alves", "Geografia", "Turma B"},
+        {107, "Lucia Mendes", "Portugues", "Turma C"},
+        {108, "Paulo Ribeiro", "Ingles", "Turma C"},
+        {109, "Camila Rocha", "Artes", "Turma A"},
+        {110, "Bruno Martins", "Edu Fisica", "Turma B"}
+    };
+
+    Aluno listaAlunos[10] = {
+        {1, "Joao Pedro", "1º Ano", "Manha"},
+        {2, "Maria Eduarda", "1º Ano", "Manha"},
+        {3, "Lucas Oliveira", "2º Ano", "Tarde"},
+        {4, "Beatriz Souza", "2º Ano", "Tarde"},
+        {5, "Gabriel Lima", "3º Ano", "Noite"},
+        {6, "Larissa Silva", "3º Ano", "Noite"},
+        {7, "Thiago Santos", "1º Ano", "Tarde"},
+        {8, "Rafaela Costa", "2º Ano", "Manha"},
+        {9, "Vitor Hugo", "3º Ano", "Manha"},
+        {10, "Sofia Ramos", "1º Ano", "Noite"}
+    };
+
+    FILE *fProf = fopen("professores.txt", "w");
+    if (fProf != NULL) {
+        fprintf(fProf, "id/nome/disciplina/turma\n");
+        for (int i = 0; i < 10; i++) {
+            fprintf(fProf, "%d/%s/%s/%s\n", listaProfs[i].id, listaProfs[i].nome, listaProfs[i].disciplina, listaProfs[i].turmas);
+        }
+        fclose(fProf);
+    }
+
+    FILE *fAluno = fopen("alunos.txt", "w");
+    if (fAluno != NULL) {
+        fprintf(fAluno, "id/nome/serie/turno\n");
+        for (int i = 0; i < 10; i++) {
+            fprintf(fAluno, "%d/%s/%s/%s\n", listaAlunos[i].id, listaAlunos[i].nome, listaAlunos[i].serie, listaAlunos[i].turno);
+        }
+        fclose(fAluno);
+    }
+
+    printf("Arquivos gerados com sucesso.\n\n");
+
+    int opcao;
+    do {
+        printf("---------- MENU DE BUSCA ----------\n");
+        printf("1. Buscar Professor\n");
+        printf("2. Buscar Aluno\n");
+        printf("0. Sair\n");
+        printf("Escolha uma opcao: ");
+        scanf("%d", &opcao);
+        getchar(); 
+
+        switch(opcao) {
+            case 1: buscarProfessor(listaProfs, 10); break;
+            case 2: buscarAluno(listaAlunos, 10); break;
+            case 0: printf("Saindo...\n"); break;
+            default: printf("Opcao invalida!\n");
+        }
+        printf("\n");
+    } while(opcao != 0);
+
+    return 0;
+}
+
+void buscarProfessor(Professor lista[], int tam) {
+    int tipo, idBusca, encontrado = 0;
+    char nomeBusca[50];
+
+    printf("\nBuscar por: 1. ID | 2. Nome: ");
+    scanf("%d", &tipo);
+    getchar();
+
+    if (tipo == 1) {
+        printf("Digite o ID: ");
+        scanf("%d", &idBusca);
+        for (int i = 0; i < tam; i++) {
+            if (lista[i].id == idBusca) {
+                printf("\nEncontrado: %s | Disciplina: %s | %s\n", lista[i].nome, lista[i].disciplina, lista[i].turmas);
+                encontrado = 1;
+                break;
+            }
+        }
+    } else {
+        printf("Digite o Nome (ou parte dele): ");
+        fgets(nomeBusca, 50, stdin);
+        nomeBusca[strcspn(nomeBusca, "\n")] = 0;
+
+        for (int i = 0; i < tam; i++) {
+            if (strstr(lista[i].nome, nomeBusca) != NULL) {
+                printf("\nID: %d | Nome: %s | Disciplina: %s\n", lista[i].id, lista[i].nome, lista[i].disciplina);
+                encontrado = 1;
+            }
+        }
+    }
+    if (!encontrado) printf("\nNenhum professor encontrado.\n");
+}
+
+void buscarAluno(Aluno lista[], int tam) {
+    int tipo, idBusca, encontrado = 0;
+    char nomeBusca[50];
+
+    printf("\nBuscar por: 1. ID | 2. Nome: ");
+    scanf("%d", &tipo);
+    getchar();
+
+    if (tipo == 1) {
+        printf("Digite o ID: ");
+        scanf("%d", &idBusca);
+        for (int i = 0; i < tam; i++) {
+            if (lista[i].id == idBusca) {
+                printf("\nEncontrado: %s | Serie: %s | Turno: %s\n", lista[i].nome, lista[i].serie, lista[i].turno);
+                encontrado = 1;
+                break;
+            }
+        }
+    } else {
+        printf("Digite o Nome (ou parte dele): ");
+        fgets(nomeBusca, 50, stdin);
+        nomeBusca[strcspn(nomeBusca, "\n")] = 0;
+
+        for (int i = 0; i < tam; i++) {
+            if (strstr(lista[i].nome, nomeBusca) != NULL) {
+                printf("\nID: %d | Nome: %s | Serie: %s\n", lista[i].id, lista[i].nome, lista[i].serie);
+                encontrado = 1;
+            }
+        }
+    }
+    if (!encontrado) printf("\nNenhum aluno encontrado.\n");
+}
