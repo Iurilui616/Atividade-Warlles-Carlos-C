@@ -6,252 +6,469 @@
 
 typedef struct {
     int id;
-    char nome[50];
-    char disciplina[50];
-    char turmas[30];
-    int idade;      
-    char email[50]; 
-} Professor;
-
-typedef struct {
-    int id;
-    char nome[50];
-    char serie[20];
-    char turno[20];
-    int idade;      
-    char email[50]; 
-} Aluno;
+    char tipo[40];
+    char nome[100];
+    int idade;
+    char campo1[100];
+    char campo2[100];
+    char campo3[100];
+    char email[100];
+} Registro;
 
 void limparBuffer() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
-void buscarProfessor(Professor lista[], int tam);
-void buscarAluno(Aluno lista[], int tam);
-void adicionarProfessor(Professor lista[], int *tam, Aluno listaA[], int tamA);
-void adicionarAluno(Aluno lista[], int *tam, Professor listaP[], int tamP);
-void alterarProfessor(Professor lista[], int tam, Aluno listaA[], int tamA);
-void alterarAluno(Aluno lista[], int tam, Professor listaP[], int tamP);
-void excluirProfessor(Professor lista[], int *tam);
-void excluirAluno(Aluno lista[], int *tam);
+void removerEnter(char texto[]) {
+    texto[strcspn(texto, "\n")] = '\0';
+}
 
-int main() {
-    int opcao;
-    int qtdProfs = 10;
-    int qtdAlunos = 10;
+void salvar(char nomeArquivo[], Registro lista[], int total) {
+    FILE *arquivo = fopen(nomeArquivo, "wb");
 
-    Professor listaProfs[MAX] = {
-        {101, "Carlos Silva", "Matematica", "Turma A", 0, ""},
-        {102, "Ana Souza", "Fisica", "Turma C", 0, ""},
-        {103, "Marcos Santos", "Quimica", "Turma A", 0, ""},
-        {104, "Fernanda Sousa", "Biologia", "Turma B", 0, ""},
-        {105, "Fernanda Lima", "Historia", "Turma A", 0, ""},
-        {106, "Roberto Alves", "Geografia", "Turma B", 0, ""},
-        {107, "Lucia Mendes", "Portugues", "Turma C", 0, ""},
-        {108, "Paulo Ribeiro", "Ingles", "Turma C", 0, ""},
-        {109, "Camila Rocha", "Artes", "Turma A", 0, ""},
-        {110, "Bruno Martins", "Edu Fisica", "Turma B", 0, ""}
-    };
+    if (arquivo == NULL) {
+        printf("\nErro ao salvar arquivo.\n");
+        return;
+    }
 
-    Aluno listaAlunos[MAX] = {
-        {1, "Joao Pedro", "1º Ano", "Manha", 0, ""},
-        {2, "Maria Eduarda", "1º Ano", "Manha", 0, ""},
-        {3, "Lucas Oliveira", "2º Ano", "Tarde", 0, ""},
-        {4, "Beatriz Souza", "2º Ano", "Tarde", 0, ""},
-        {5, "Gabriel Lima", "3º Ano", "Noite", 0, ""},
-        {6, "Larissa Silva", "3º Ano", "Noite", 0, ""},
-        {7, "Thiago Santos", "1º Ano", "Tarde", 0, ""},
-        {8, "Rafaela Costa", "2º Ano", "Manha", 0, ""},
-        {9, "Vitor Hugo", "3º Ano", "Manha", 0, ""},
-        {10, "Sofia Ramos", "1º Ano", "Noite", 0, ""}
-    };
+    fwrite(&total, sizeof(int), 1, arquivo);
+    fwrite(lista, sizeof(Registro), total, arquivo);
 
-    do {
-        printf("---------- MENU ESCOLAR ----------\n");
-        printf("1. Buscar Professor    4. Alterar Professor    7. Excluir Professor\n");
-        printf("2. Buscar Aluno        5. Alterar Aluno        8. Excluir Aluno\n");
-        printf("3. Adicionar Professor 6. Adicionar Aluno      0. Sair\n");
-        printf("Escolha uma opcao: ");
-        scanf("%d", &opcao);
-        limparBuffer();
+    fclose(arquivo);
+}
 
-        switch(opcao) {
-            case 1: buscarProfessor(listaProfs, qtdProfs); break;
-            case 2: buscarAluno(listaAlunos, qtdAlunos); break;
-            case 3: adicionarProfessor(listaProfs, &qtdProfs, listaAlunos, qtdAlunos); break;
-            case 4: alterarProfessor(listaProfs, qtdProfs, listaAlunos, qtdAlunos); break;
-            case 5: alterarAluno(listaAlunos, qtdAlunos, listaProfs, qtdProfs); break;
-            case 6: adicionarAluno(listaAlunos, &qtdAlunos, listaProfs, qtdProfs); break;
-            case 7: excluirProfessor(listaProfs, &qtdProfs); break;
-            case 8: excluirAluno(listaAlunos, &qtdAlunos); break;
-            case 0: printf("Saindo...\n"); break;
-            default: printf("Opcao invalida!\n");
+int carregar(char nomeArquivo[], Registro lista[]) {
+    FILE *arquivo = fopen(nomeArquivo, "rb");
+    int total = 0;
+
+    if (arquivo == NULL) {
+        return 0;
+    }
+
+    fread(&total, sizeof(int), 1, arquivo);
+    fread(lista, sizeof(Registro), total, arquivo);
+
+    fclose(arquivo);
+    return total;
+}
+
+int existeId(Registro lista[], int total, int id) {
+    int i;
+
+    for (i = 0; i < total; i++) {
+        if (lista[i].id == id) {
+            return 1;
         }
-        printf("\n");
-    } while(opcao != 0);
+    }
 
     return 0;
 }
 
-void buscarProfessor(Professor lista[], int tam) {
-    int tipo, idBusca, encontrado = 0;
-    char nomeBusca[50];
-    printf("\nBuscar por: 1. ID | 2. Nome: ");
-    scanf("%d", &tipo);
+int gerarId(Registro lista[], int total) {
+    int maior = 0;
+    int i;
+
+    for (i = 0; i < total; i++) {
+        if (lista[i].id > maior) {
+            maior = lista[i].id;
+        }
+    }
+
+    return maior + 1;
+}
+
+void mostrarRegistro(Registro r, char c1[], char c2[], char c3[]) {
+    printf("\nID: %d\n", r.id);
+    printf("Tipo: %s\n", r.tipo);
+    printf("Nome: %s\n", r.nome);
+    printf("Idade: %d\n", r.idade);
+    printf("%s: %s\n", c1, r.campo1);
+    printf("%s: %s\n", c2, r.campo2);
+    printf("%s: %s\n", c3, r.campo3);
+    printf("Email: %s\n", r.email);
+}
+
+void listar(Registro lista[], int total, char c1[], char c2[], char c3[]) {
+    int i;
+
+    if (total == 0) {
+        printf("\nNenhum registro cadastrado.\n");
+        return;
+    }
+
+    for (i = 0; i < total; i++) {
+        mostrarRegistro(lista[i], c1, c2, c3);
+        printf("-----------------------------\n");
+    }
+}
+
+void cadastrar(Registro lista[], int *total, char arquivo[], char c1[], char c2[], char c3[]) {
+    Registro novo;
+    int i;
+
+    if (*total >= MAX) {
+        printf("\nLimite de cadastros atingido.\n");
+        return;
+    }
+
+    novo.id = gerarId(lista, *total);
+
+    printf("\nTipo: ");
+    fgets(novo.tipo, 40, stdin);
+    removerEnter(novo.tipo);
+
+    printf("Nome: ");
+    fgets(novo.nome, 100, stdin);
+    removerEnter(novo.nome);
+
+    for (i = 0; i < *total; i++) {
+        if (strcmp(lista[i].nome, novo.nome) == 0) {
+            printf("\nAviso: ja existe alguem com esse nome.\n");
+            printf("ID: %d | Tipo: %s | %s: %s | %s: %s\n",
+                   lista[i].id, lista[i].tipo, c1, lista[i].campo1, c2, lista[i].campo2);
+        }
+    }
+
+    printf("Idade: ");
+    scanf("%d", &novo.idade);
     limparBuffer();
 
-    if (tipo == 1) {
+    printf("%s: ", c1);
+    fgets(novo.campo1, 100, stdin);
+    removerEnter(novo.campo1);
+
+    printf("%s: ", c2);
+    fgets(novo.campo2, 100, stdin);
+    removerEnter(novo.campo2);
+
+    printf("%s: ", c3);
+    fgets(novo.campo3, 100, stdin);
+    removerEnter(novo.campo3);
+
+    printf("Email: ");
+    fgets(novo.email, 100, stdin);
+    removerEnter(novo.email);
+
+    lista[*total] = novo;
+    (*total)++;
+
+    salvar(arquivo, lista, *total);
+
+    printf("\nCadastro realizado com sucesso! ID gerado: %d\n", novo.id);
+}
+
+void buscar(Registro lista[], int total, char c1[], char c2[], char c3[]) {
+    int opcao, id, i, encontrados[MAX], qtd = 0, escolha;
+    char nome[100];
+
+    printf("\nBuscar por:\n");
+    printf("1 - ID\n");
+    printf("2 - Nome\n");
+    printf("Escolha: ");
+    scanf("%d", &opcao);
+    limparBuffer();
+
+    if (opcao == 1) {
         printf("Digite o ID: ");
-        scanf("%d", &idBusca);
-        for (int i = 0; i < tam; i++) {
-            if (lista[i].id == idBusca) {
-                printf("\nEncontrado: %s | Disciplina: %s | Idade: %d\n", lista[i].nome, lista[i].disciplina, lista[i].idade);
-                encontrado = 1; break;
+        scanf("%d", &id);
+
+        for (i = 0; i < total; i++) {
+            if (lista[i].id == id) {
+                printf("\nRegistro encontrado:\n");
+                mostrarRegistro(lista[i], c1, c2, c3);
+                return;
+            }
+        }
+
+        printf("\nRegistro nao encontrado.\n");
+    } else if (opcao == 2) {
+        printf("Digite o nome: ");
+        fgets(nome, 100, stdin);
+        removerEnter(nome);
+
+        for (i = 0; i < total; i++) {
+            if (strstr(lista[i].nome, nome) != NULL) {
+                encontrados[qtd] = i;
+                qtd++;
+            }
+        }
+
+        if (qtd == 0) {
+            printf("\nNenhum registro encontrado.\n");
+        } else if (qtd == 1) {
+            mostrarRegistro(lista[encontrados[0]], c1, c2, c3);
+        } else {
+            printf("\nForam encontrados %d registros parecidos.\n", qtd);
+
+            for (i = 0; i < qtd; i++) {
+                int pos = encontrados[i];
+
+                printf("\n[%d]\n", i + 1);
+                printf("ID: %d\n", lista[pos].id);
+                printf("Tipo: %s\n", lista[pos].tipo);
+                printf("Nome: %s\n", lista[pos].nome);
+                printf("%s: %s\n", c1, lista[pos].campo1);
+                printf("%s: %s\n", c2, lista[pos].campo2);
+                printf("Email: %s\n", lista[pos].email);
+            }
+
+            printf("\nEscolha o numero correto: ");
+            scanf("%d", &escolha);
+
+            if (escolha >= 1 && escolha <= qtd) {
+                mostrarRegistro(lista[encontrados[escolha - 1]], c1, c2, c3);
+            } else {
+                printf("\nOpcao invalida.\n");
             }
         }
     } else {
-        printf("Digite o Nome: ");
-        fgets(nomeBusca, 50, stdin);
-        nomeBusca[strcspn(nomeBusca, "\n")] = 0;
-        
-        int matches[MAX], mCont = 0;
-        for (int i = 0; i < tam; i++) {
-            if (strstr(lista[i].nome, nomeBusca) != NULL) matches[mCont++] = i;
-        }
-
-        if (mCont > 1) {
-            printf("\nVarios professores encontrados. Qual disciplina voce busca?\n");
-            for(int i=0; i<mCont; i++) printf("[%d] ID: %d | Nome: %s | Materia: %s\n", i+1, lista[matches[i]].id, lista[matches[i]].nome, lista[matches[i]].disciplina);
-            printf("Escolha o numero: ");
-            int sel; scanf("%d", &sel);
-            if(sel > 0 && sel <= mCont) {
-                int idx = matches[sel-1];
-                printf("\nSelecionado: %s | Disciplina: %s\n", lista[idx].nome, lista[idx].disciplina);
-                encontrado = 1;
-            }
-        } else if (mCont == 1) {
-            printf("\nID: %d | Nome: %s | Disciplina: %s\n", lista[matches[0]].id, lista[matches[0]].nome, lista[matches[0]].disciplina);
-            encontrado = 1;
-        }
+        printf("\nOpcao invalida.\n");
     }
-    if (!encontrado) printf("\nNenhum registro encontrado.\n");
 }
 
-void buscarAluno(Aluno lista[], int tam) {
-    int tipo, idBusca, encontrado = 0;
-    char nomeBusca[50];
-    printf("\nBuscar por: 1. ID | 2. Nome: ");
-    scanf("%d", &tipo);
+void editar(Registro lista[], int total, char arquivo[], char c1[], char c2[], char c3[]) {
+    int id, i;
+
+    printf("\nDigite o ID para editar: ");
+    scanf("%d", &id);
     limparBuffer();
 
-    if (tipo == 1) {
-        printf("Digite o ID: ");
-        scanf("%d", &idBusca);
-        for (int i = 0; i < tam; i++) {
-            if (lista[i].id == idBusca) {
-                printf("\nEncontrado: %s | Serie: %s | Turno: %s\n", lista[i].nome, lista[i].serie, lista[i].turno);
-                encontrado = 1; break;
+    for (i = 0; i < total; i++) {
+        if (lista[i].id == id) {
+            printf("\nEditando: %s\n", lista[i].nome);
+
+            printf("Novo tipo: ");
+            fgets(lista[i].tipo, 40, stdin);
+            removerEnter(lista[i].tipo);
+
+            printf("Novo nome: ");
+            fgets(lista[i].nome, 100, stdin);
+            removerEnter(lista[i].nome);
+
+            printf("Nova idade: ");
+            scanf("%d", &lista[i].idade);
+            limparBuffer();
+
+            printf("Novo %s: ", c1);
+            fgets(lista[i].campo1, 100, stdin);
+            removerEnter(lista[i].campo1);
+
+            printf("Novo %s: ", c2);
+            fgets(lista[i].campo2, 100, stdin);
+            removerEnter(lista[i].campo2);
+
+            printf("Novo %s: ", c3);
+            fgets(lista[i].campo3, 100, stdin);
+            removerEnter(lista[i].campo3);
+
+            printf("Novo email: ");
+            fgets(lista[i].email, 100, stdin);
+            removerEnter(lista[i].email);
+
+            salvar(arquivo, lista, total);
+
+            printf("\nRegistro editado com sucesso.\n");
+            return;
+        }
+    }
+
+    printf("\nRegistro nao encontrado.\n");
+}
+
+void excluir(Registro lista[], int *total, char arquivo[]) {
+    int id, i, j;
+
+    printf("\nDigite o ID para excluir: ");
+    scanf("%d", &id);
+
+    for (i = 0; i < *total; i++) {
+        if (lista[i].id == id) {
+            printf("\nExcluindo: %s\n", lista[i].nome);
+
+            for (j = i; j < *total - 1; j++) {
+                lista[j] = lista[j + 1];
             }
-        }
-    } else {
-        printf("Digite o Nome: ");
-        fgets(nomeBusca, 50, stdin);
-        nomeBusca[strcspn(nomeBusca, "\n")] = 0;
 
-        int matches[MAX], mCont = 0;
-        for (int i = 0; i < tam; i++) {
-            if (strstr(lista[i].nome, nomeBusca) != NULL) matches[mCont++] = i;
-        }
+            (*total)--;
+            salvar(arquivo, lista, *total);
 
-        if (mCont > 1) {
-            printf("\nVarios alunos encontrados. Escolha pela matricula (ID):\n");
-            for(int i=0; i<mCont; i++) printf("[%d] Matricula: %d | Nome: %s | Serie: %s\n", i+1, lista[matches[i]].id, lista[matches[i]].nome, lista[matches[i]].serie);
-            printf("Escolha o numero: ");
-            int sel; scanf("%d", &sel);
-            if(sel > 0 && sel <= mCont) {
-                int idx = matches[sel-1];
-                printf("\nSelecionado: %s | Serie: %s\n", lista[idx].nome, lista[idx].serie);
-                encontrado = 1;
-            }
-        } else if (mCont == 1) {
-            printf("\nID: %d | Nome: %s | Serie: %s\n", lista[matches[0]].id, lista[matches[0]].nome, lista[matches[0]].serie);
-            encontrado = 1;
+            printf("\nRegistro excluido com sucesso.\n");
+            return;
         }
     }
-    if (!encontrado) printf("\nNenhum aluno encontrado.\n");
+
+    printf("\nRegistro nao encontrado.\n");
 }
 
-void adicionarProfessor(Professor lista[], int *tam, Aluno listaA[], int tamA) {
-    Professor p;
-    printf("ID: "); scanf("%d", &p.id); limparBuffer();
-    printf("Nome: "); fgets(p.nome, 50, stdin); p.nome[strcspn(p.nome, "\n")] = 0;
-    
-    for(int i=0; i<*tam; i++) if(strcmp(lista[i].nome, p.nome) == 0) printf("[AVISO] Ja existe prof. com esse nome na materia %s\n", lista[i].disciplina);
-    for(int i=0; i<tamA; i++) if(strcmp(listaA[i].nome, p.nome) == 0) printf("[AVISO] Ja existe aluno com esse nome na serie %s\n", listaA[i].serie);
+void preencherIniciais(Registro lista[], int *total, Registro iniciais[], int qtd, char arquivo[]) {
+    int i;
 
-    printf("Disciplina: "); fgets(p.disciplina, 50, stdin); p.disciplina[strcspn(p.disciplina, "\n")] = 0;
-    printf("Turmas: "); fgets(p.turmas, 30, stdin); p.turmas[strcspn(p.turmas, "\n")] = 0;
-    printf("Idade: "); scanf("%d", &p.idade);
-    printf("Email: "); scanf("%s", p.email);
-    lista[*tam] = p; (*tam)++;
-}
-
-void adicionarAluno(Aluno lista[], int *tam, Professor listaP[], int tamP) {
-    Aluno a;
-    printf("ID: "); scanf("%d", &a.id); limparBuffer();
-    printf("Nome: "); fgets(a.nome, 50, stdin); a.nome[strcspn(a.nome, "\n")] = 0;
-
-    for(int i=0; i<tamP; i++) if(strcmp(listaP[i].nome, a.nome) == 0) printf("[AVISO] Ja existe prof. com esse nome na materia %s\n", listaP[i].disciplina);
-    for(int i=0; i<*tam; i++) if(strcmp(lista[i].nome, a.nome) == 0) printf("[AVISO] Ja existe aluno com esse nome na serie %s\n", lista[i].serie);
-
-    printf("Serie: "); fgets(a.serie, 20, stdin); a.serie[strcspn(a.serie, "\n")] = 0;
-    printf("Turno: "); fgets(a.turno, 20, stdin); a.turno[strcspn(a.turno, "\n")] = 0;
-    printf("Idade: "); scanf("%d", &a.idade);
-    printf("Email: "); scanf("%s", a.email);
-    lista[*tam] = a; (*tam)++;
-}
-
-void alterarProfessor(Professor lista[], int tam, Aluno listaA[], int tamA) {
-    int id; printf("Digite o ID do professor a alterar: "); scanf("%d", &id); limparBuffer();
-    for(int i=0; i<tam; i++) {
-        if(lista[i].id == id) {
-            printf("Novo nome: "); fgets(lista[i].nome, 50, stdin); lista[i].nome[strcspn(lista[i].nome, "\n")] = 0;
-            printf("Nova disciplina: "); fgets(lista[i].disciplina, 50, stdin); lista[i].disciplina[strcspn(lista[i].disciplina, "\n")] = 0;
-            printf("Alterado com sucesso.\n"); return;
+    if (*total == 0) {
+        for (i = 0; i < qtd; i++) {
+            lista[i] = iniciais[i];
         }
-    }
-    printf("Nao encontrado.\n");
-}
 
-void alterarAluno(Aluno lista[], int tam, Professor listaP[], int tamP) {
-    int id; printf("Digite o ID do aluno a alterar: "); scanf("%d", &id); limparBuffer();
-    for(int i=0; i<tam; i++) {
-        if(lista[i].id == id) {
-            printf("Novo nome: "); fgets(lista[i].nome, 50, stdin); lista[i].nome[strcspn(lista[i].nome, "\n")] = 0;
-            printf("Nova serie: "); fgets(lista[i].serie, 20, stdin); lista[i].serie[strcspn(lista[i].serie, "\n")] = 0;
-            printf("Alterado com sucesso.\n"); return;
-        }
-    }
-    printf("Nao encontrado.\n");
-}
-
-void excluirProfessor(Professor lista[], int *tam) {
-    int id; printf("ID para excluir: "); scanf("%d", &id);
-    for(int i=0; i<*tam; i++) {
-        if(lista[i].id == id) {
-            for(int j=i; j<*tam-1; j++) lista[j] = lista[j+1];
-            (*tam)--; printf("Excluido.\n"); return;
-        }
+        *total = qtd;
+        salvar(arquivo, lista, *total);
     }
 }
 
-void excluirAluno(Aluno lista[], int *tam) {
-    int id; printf("ID para excluir: "); scanf("%d", &id);
-    for(int i=0; i<*tam; i++) {
-        if(lista[i].id == id) {
-            for(int j=i; j<*tam-1; j++) lista[j] = lista[j+1];
-            (*tam)--; printf("Excluido.\n"); return;
+void menuBanco(char titulo[], char arquivo[], Registro lista[], int *total, char c1[], char c2[], char c3[]) {
+    int opcao;
+
+    do {
+        printf("\n====================================\n");
+        printf("BANCO DE DADOS: %s\n", titulo);
+        printf("====================================\n");
+        printf("1 - Cadastrar\n");
+        printf("2 - Listar todos\n");
+        printf("3 - Buscar\n");
+        printf("4 - Editar\n");
+        printf("5 - Excluir\n");
+        printf("0 - Voltar\n");
+        printf("Escolha uma opcao: ");
+        scanf("%d", &opcao);
+        limparBuffer();
+
+        switch (opcao) {
+            case 1:
+                cadastrar(lista, total, arquivo, c1, c2, c3);
+                break;
+            case 2:
+                listar(lista, *total, c1, c2, c3);
+                break;
+            case 3:
+                buscar(lista, *total, c1, c2, c3);
+                break;
+            case 4:
+                editar(lista, *total, arquivo, c1, c2, c3);
+                break;
+            case 5:
+                excluir(lista, total, arquivo);
+                break;
+            case 0:
+                printf("\nVoltando...\n");
+                break;
+            default:
+                printf("\nOpcao invalida.\n");
         }
-    }
+
+    } while (opcao != 0);
+}
+
+int main() {
+    Registro escola[MAX];
+    Registro hospital[MAX];
+    Registro biblioteca[MAX];
+    Registro loja[MAX];
+
+    int totalEscola = carregar("escola.dat", escola);
+    int totalHospital = carregar("hospital.dat", hospital);
+    int totalBiblioteca = carregar("biblioteca.dat", biblioteca);
+    int totalLoja = carregar("loja.dat", loja);
+
+    Registro escolaInicial[] = {
+        {1, "Aluno", "Joao Pedro", 15, "1 Ano", "Manha", "Informatica", "joao@email.com"},
+        {2, "Aluno", "Maria Eduarda", 15, "1 Ano", "Manha", "Informatica", "maria@email.com"},
+        {3, "Aluno", "Lucas Oliveira", 16, "2 Ano", "Tarde", "Administracao", "lucas@email.com"},
+        {4, "Aluno", "Beatriz Souza", 16, "2 Ano", "Tarde", "Informatica", "beatriz@email.com"},
+        {5, "Aluno", "Gabriel Lima", 17, "3 Ano", "Noite", "Eletrotecnica", "gabriel@email.com"},
+        {6, "Aluno", "Larissa Silva", 17, "3 Ano", "Noite", "Administracao", "larissa@email.com"},
+        {7, "Aluno", "Thiago Santos", 15, "1 Ano", "Tarde", "Informatica", "thiago@email.com"},
+        {8, "Aluno", "Rafaela Costa", 16, "2 Ano", "Manha", "Administracao", "rafaela@email.com"},
+        {9, "Aluno", "Vitor Hugo", 17, "3 Ano", "Manha", "Eletrotecnica", "vitor@email.com"},
+        {10, "Aluno", "Sofia Ramos", 15, "1 Ano", "Noite", "Informatica", "sofia@email.com"},
+        {101, "Professor", "Carlos Silva", 35, "Matematica", "Turma A", "Manha", "carlos@email.com"},
+        {102, "Professor", "Ana Souza", 32, "Fisica", "Turma C", "Tarde", "ana@email.com"},
+        {103, "Professor", "Marcos Santos", 40, "Quimica", "Turma A", "Manha", "marcos@email.com"},
+        {104, "Professor", "Fernanda Sousa", 38, "Biologia", "Turma B", "Tarde", "fernanda@email.com"},
+        {105, "Professor", "Fernanda Lima", 37, "Historia", "Turma A", "Manha", "fernandalima@email.com"},
+        {106, "Professor", "Roberto Alves", 44, "Geografia", "Turma B", "Noite", "roberto@email.com"},
+        {107, "Professor", "Lucia Mendes", 41, "Portugues", "Turma C", "Tarde", "lucia@email.com"},
+        {108, "Professor", "Paulo Ribeiro", 39, "Ingles", "Turma C", "Manha", "paulo@email.com"},
+        {109, "Professor", "Camila Rocha", 34, "Artes", "Turma A", "Tarde", "camila@email.com"},
+        {110, "Professor", "Bruno Martins", 36, "Educacao Fisica", "Turma B", "Manha", "bruno@email.com"}
+    };
+
+    Registro hospitalInicial[] = {
+        {1, "Paciente", "Pedro Henrique", 28, "Dengue", "Quarto 12", "Dr. Renato", "pedro@email.com"},
+        {2, "Paciente", "Amanda Lopes", 21, "Gripe", "Quarto 05", "Dra. Paula", "amanda@email.com"},
+        {3, "Paciente", "Rafael Costa", 34, "Fratura", "Quarto 09", "Dr. Bruno", "rafael@email.com"},
+        {4, "Paciente", "Juliana Rocha", 26, "Enxaqueca", "Quarto 02", "Dra. Carla", "juliana@email.com"},
+        {5, "Paciente", "Bruno Alves", 45, "Diabetes", "Quarto 15", "Dra. Carla", "bruno@email.com"},
+        {6, "Medico", "Renato Lima", 50, "Cardiologia", "Sala 03", "Manha", "renato@hospital.com"},
+        {7, "Medico", "Paula Rocha", 39, "Clinico Geral", "Sala 01", "Tarde", "paula@hospital.com"},
+        {8, "Medico", "Bruno Castro", 42, "Ortopedia", "Sala 04", "Noite", "bruno@hospital.com"},
+        {9, "Enfermeira", "Carla Mendes", 33, "Emergencia", "Ala B", "Tarde", "carla@hospital.com"},
+        {10, "Paciente", "Amanda Lopes", 45, "Pressao Alta", "Quarto 18", "Dr. Renato", "amanda2@email.com"}
+    };
+
+    Registro bibliotecaInicial[] = {
+        {1, "Livro", "Dom Casmurro", 1899, "Machado de Assis", "Romance", "Disponivel", "biblioteca@email.com"},
+        {2, "Livro", "O Cortico", 1890, "Aluisio Azevedo", "Naturalismo", "Disponivel", "biblioteca@email.com"},
+        {3, "Livro", "Iracema", 1865, "Jose de Alencar", "Romance", "Emprestado", "biblioteca@email.com"},
+        {4, "Livro", "Vidas Secas", 1938, "Graciliano Ramos", "Modernismo", "Disponivel", "biblioteca@email.com"},
+        {5, "Livro", "Capitaes da Areia", 1937, "Jorge Amado", "Romance", "Emprestado", "biblioteca@email.com"},
+        {6, "Leitor", "Arthur Gomes", 17, "Dom Casmurro", "10/06/2026", "Emprestimo", "arthur@email.com"},
+        {7, "Leitor", "Bianca Martins", 18, "O Cortico", "12/06/2026", "Emprestimo", "bianca@email.com"},
+        {8, "Leitor", "Caio Oliveira", 16, "Iracema", "15/06/2026", "Emprestimo", "caio@email.com"},
+        {9, "Bibliotecaria", "Helena Costa", 41, "Cadastro de livros", "Setor A", "Manha", "helena@biblioteca.com"},
+        {10, "Leitor", "Arthur Gomes", 18, "Capitaes da Areia", "25/06/2026", "Emprestimo", "arthur2@email.com"}
+    };
+
+    Registro lojaInicial[] = {
+        {1, "Produto", "Notebook Lenovo", 0, "Informatica", "R$ 3200.00", "Quantidade: 8", "loja@email.com"},
+        {2, "Produto", "Mouse Gamer", 0, "Acessorios", "R$ 89.90", "Quantidade: 30", "loja@email.com"},
+        {3, "Produto", "Teclado Mecanico", 0, "Acessorios", "R$ 199.90", "Quantidade: 15", "loja@email.com"},
+        {4, "Produto", "Monitor Samsung", 0, "Informatica", "R$ 899.90", "Quantidade: 10", "loja@email.com"},
+        {5, "Produto", "Cadeira Gamer", 0, "Moveis", "R$ 750.00", "Quantidade: 5", "loja@email.com"},
+        {6, "Funcionario", "Camila Ferreira", 25, "Vendedora", "Atendimento", "Manha", "camila@loja.com"},
+        {7, "Funcionario", "Thiago Mendes", 30, "Gerente", "Administrativo", "Integral", "thiago@loja.com"},
+        {8, "Funcionario", "Sofia Ramos", 22, "Caixa", "Financeiro", "Tarde", "sofia@loja.com"}
+    };
+
+    preencherIniciais(escola, &totalEscola, escolaInicial, 20, "escola.dat");
+    preencherIniciais(hospital, &totalHospital, hospitalInicial, 10, "hospital.dat");
+    preencherIniciais(biblioteca, &totalBiblioteca, bibliotecaInicial, 10, "biblioteca.dat");
+    preencherIniciais(loja, &totalLoja, lojaInicial, 8, "loja.dat");
+
+    int opcao;
+
+    do {
+        printf("\n====================================\n");
+        printf("SISTEMA DE BANCO DE DADOS\n");
+        printf("====================================\n");
+        printf("1 - Escola\n");
+        printf("2 - Hospital\n");
+        printf("3 - Biblioteca\n");
+        printf("4 - Loja\n");
+        printf("0 - Sair\n");
+        printf("Escolha um banco: ");
+        scanf("%d", &opcao);
+        limparBuffer();
+
+        switch (opcao) {
+            case 1:
+                menuBanco("ESCOLA", "escola.dat", escola, &totalEscola, "Serie/Disciplina", "Turno/Turma", "Curso/Horario");
+                break;
+            case 2:
+                menuBanco("HOSPITAL", "hospital.dat", hospital, &totalHospital, "Diagnostico/Especialidade", "Quarto/Sala", "Medico/Horario");
+                break;
+            case 3:
+                menuBanco("BIBLIOTECA", "biblioteca.dat", biblioteca, &totalBiblioteca, "Livro/Autor", "Data/Genero", "Status/Funcao");
+                break;
+            case 4:
+                menuBanco("LOJA", "loja.dat", loja, &totalLoja, "Categoria/Cargo", "Preco/Setor", "Quantidade/Horario");
+                break;
+            case 0:
+                printf("\nSaindo do sistema...\n");
+                break;
+            default:
+                printf("\nOpcao invalida.\n");
+        }
+
+    } while (opcao != 0);
+
+    return 0;
 }
