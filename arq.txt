@@ -1,8 +1,68 @@
+#include <windows.h>
+#include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define MAX 100
+
+#define ID_COMBO_BANCO        101
+#define ID_LISTA              102
+#define ID_BUSCA              103
+#define ID_BTN_BUSCAR         104
+#define ID_BTN_LISTAR         105
+#define ID_BTN_NOVO           106
+#define ID_BTN_SALVAR         107
+#define ID_BTN_EXCLUIR        108
+#define ID_BTN_LIMPAR         109
+#define ID_MODO_MODELO        110
+#define ID_NOME_BANCO         111
+#define ID_BTN_CRIAR_BANCO    112
+#define ID_BTN_ENTRAR_BANCO   113
+#define ID_BTN_ABRIR_PASTA    114
+
+#define ID_TXT_ID             201
+#define ID_TXT_TIPO           202
+#define ID_TXT_NOME           203
+#define ID_TXT_IDADE          204
+#define ID_TXT_CAMPO1         205
+#define ID_TXT_CAMPO2         206
+#define ID_TXT_CAMPO3         207
+#define ID_TXT_EMAIL          208
+
+#define ID_LBL_MODELO         301
+#define ID_LBL_NOME_BANCO     302
+#define ID_LBL_BANCO_ABERTO   303
+#define ID_LBL_BUSCA          304
+#define ID_LBL_ID             305
+#define ID_LBL_TIPO           306
+#define ID_LBL_NOME           307
+#define ID_LBL_IDADE          308
+#define ID_LBL_CAMPO1         309
+#define ID_LBL_CAMPO2         310
+#define ID_LBL_CAMPO3         311
+#define ID_LBL_EMAIL          312
+#define ID_STATUS             401
+
+#define BTN_AZUL              1
+#define BTN_VERDE             2
+#define BTN_VERMELHO          3
+#define BTN_CLARO             4
+#define BTN_ESCURO            5
+
+#define COR_FUNDO             RGB(235, 244, 255)
+#define COR_SIDEBAR           RGB(15, 45, 90)
+#define COR_SIDEBAR_CLARA     RGB(23, 70, 135)
+#define COR_CARD              RGB(255, 255, 255)
+#define COR_INPUT             RGB(248, 251, 255)
+#define COR_TEXTO             RGB(23, 37, 58)
+#define COR_MUTED             RGB(89, 106, 130)
+#define COR_AZUL              RGB(37, 99, 235)
+#define COR_AZUL_ESCURO       RGB(29, 78, 216)
+#define COR_VERDE             RGB(22, 163, 74)
+#define COR_VERMELHO          RGB(220, 38, 38)
+#define COR_BORDA             RGB(203, 216, 235)
 
 typedef struct {
     int id;
@@ -15,25 +75,179 @@ typedef struct {
     char email[100];
 } Registro;
 
-void limparBuffer() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
+typedef struct {
+    char titulo[40];
+    char arquivo[360];
+    char pastaBanco[360];
+    char c1[80];
+    char c2[80];
+    char c3[80];
+    Registro lista[MAX];
+    int total;
+} Banco;
+
+HINSTANCE hInst;
+HWND hJanela;
+
+HWND hComboBanco, hLista, hBusca, hStatus;
+HWND hId, hTipo, hNome, hIdade, hCampo1, hCampo2, hCampo3, hEmail;
+HWND hLblCampo1, hLblCampo2, hLblCampo3;
+HWND hComboModelo, hNomeBanco;
+
+Banco bancos[4];
+int bancoAtual = 0;
+
+char pastaDados[360];
+char nomesArquivosBase[4][40] = {"escola", "hospital", "biblioteca", "loja"};
+char nomesModelos[4][40] = {"Escola", "Hospital", "Biblioteca", "Loja"};
+
+HFONT fonteTitulo, fonteSubtitulo, fonteNormal, fontePequena, fonteBotao, fonteLista;
+HBRUSH brushFundo, brushCard, brushInput, brushSidebar;
+
+void atualizarBancoAtual();
+
+void criarFontes() {
+    fonteTitulo = CreateFontA(26, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                              DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                              CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+
+    fonteSubtitulo = CreateFontA(18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                                  DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                  CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+
+    fonteNormal = CreateFontA(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                              DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                              CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+
+    fontePequena = CreateFontA(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                               DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                               CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+
+    fonteBotao = CreateFontA(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                             CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+
+    fonteLista = CreateFontA(15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                             CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Consolas");
 }
 
-void removerEnter(char texto[]) {
-    texto[strcspn(texto, "\n")] = '\0';
+void criarBrushes() {
+    brushFundo = CreateSolidBrush(COR_FUNDO);
+    brushCard = CreateSolidBrush(COR_CARD);
+    brushInput = CreateSolidBrush(COR_INPUT);
+    brushSidebar = CreateSolidBrush(COR_SIDEBAR);
+}
+
+void destruirObjetos() {
+    DeleteObject(fonteTitulo);
+    DeleteObject(fonteSubtitulo);
+    DeleteObject(fonteNormal);
+    DeleteObject(fontePequena);
+    DeleteObject(fonteBotao);
+    DeleteObject(fonteLista);
+
+    DeleteObject(brushFundo);
+    DeleteObject(brushCard);
+    DeleteObject(brushInput);
+    DeleteObject(brushSidebar);
+}
+
+void setTexto(HWND h, const char *txt) {
+    SetWindowTextA(h, txt);
+}
+
+void getTexto(HWND h, char *destino, int tamanho) {
+    GetWindowTextA(h, destino, tamanho);
+    destino[tamanho - 1] = '\0';
+}
+
+void setStatus(const char *txt) {
+    SetWindowTextA(hStatus, txt);
+}
+
+void criarPastaSeNaoExistir(const char *pasta) {
+    CreateDirectoryA(pasta, NULL);
+}
+
+void criarPastaDados() {
+    char *perfil = getenv("USERPROFILE");
+
+    if (perfil != NULL && strlen(perfil) > 0) {
+        sprintf(pastaDados, "%s\\Documents\\SistemaBancoC", perfil);
+    } else {
+        strcpy(pastaDados, ".\\SistemaBancoC");
+    }
+
+    criarPastaSeNaoExistir(pastaDados);
+}
+
+void limparNomeArquivo(char texto[]) {
+    int i, j = 0;
+    char limpo[120];
+
+    for (i = 0; texto[i] != '\0' && j < 110; i++) {
+        unsigned char c = (unsigned char)texto[i];
+
+        if ((c >= 'A' && c <= 'Z') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') ||
+            c == '_' || c == '-') {
+            limpo[j++] = (char)c;
+        } else if (c == ' ') {
+            limpo[j++] = '_';
+        }
+    }
+
+    limpo[j] = '\0';
+
+    if (strlen(limpo) == 0) {
+        strcpy(limpo, "principal");
+    }
+
+    strcpy(texto, limpo);
+}
+
+void montarPastaBanco(char destino[], int modelo, char nomeBanco[]) {
+    char nomeLimpo[120];
+
+    strcpy(nomeLimpo, nomeBanco);
+    limparNomeArquivo(nomeLimpo);
+
+    sprintf(destino, "%s\\%s_%s", pastaDados, nomesArquivosBase[modelo], nomeLimpo);
+}
+
+void montarArquivoBanco(char destino[], int modelo, char nomeBanco[]) {
+    char pasta[360];
+
+    montarPastaBanco(pasta, modelo, nomeBanco);
+    sprintf(destino, "%s\\registros.dat", pasta);
+}
+
+int arquivoExiste(char caminho[]) {
+    FILE *arquivo = fopen(caminho, "rb");
+
+    if (arquivo == NULL) {
+        return 0;
+    }
+
+    fclose(arquivo);
+    return 1;
 }
 
 void salvar(char nomeArquivo[], Registro lista[], int total) {
     FILE *arquivo = fopen(nomeArquivo, "wb");
 
     if (arquivo == NULL) {
-        printf("\nErro ao salvar arquivo.\n");
+        MessageBoxA(hJanela, "Erro ao salvar. Verifique se a pasta do banco existe.", "Erro", MB_ICONERROR);
         return;
     }
 
     fwrite(&total, sizeof(int), 1, arquivo);
-    fwrite(lista, sizeof(Registro), total, arquivo);
+
+    if (total > 0) {
+        fwrite(lista, sizeof(Registro), total, arquivo);
+    }
 
     fclose(arquivo);
 }
@@ -46,23 +260,40 @@ int carregar(char nomeArquivo[], Registro lista[]) {
         return 0;
     }
 
-    fread(&total, sizeof(int), 1, arquivo);
-    fread(lista, sizeof(Registro), total, arquivo);
+    if (fread(&total, sizeof(int), 1, arquivo) != 1) {
+        fclose(arquivo);
+        return 0;
+    }
+
+    if (total < 0 || total > MAX) {
+        fclose(arquivo);
+        return 0;
+    }
+
+    if (total > 0) {
+        fread(lista, sizeof(Registro), total, arquivo);
+    }
 
     fclose(arquivo);
     return total;
 }
 
-int existeId(Registro lista[], int total, int id) {
-    int i;
+void salvarInfoBanco(Banco *b, int modelo, char nomeBanco[]) {
+    FILE *f;
+    char caminho[500];
 
-    for (i = 0; i < total; i++) {
-        if (lista[i].id == id) {
-            return 1;
-        }
+    sprintf(caminho, "%s\\info.txt", b->pastaBanco);
+
+    f = fopen(caminho, "w");
+
+    if (f != NULL) {
+        fprintf(f, "Nome do banco: %s\n", nomeBanco);
+        fprintf(f, "Modelo: %s\n", nomesModelos[modelo]);
+        fprintf(f, "Total de registros: %d\n", b->total);
+        fprintf(f, "Arquivo de dados: registros.dat\n");
+        fprintf(f, "Pasta: %s\n", b->pastaBanco);
+        fclose(f);
     }
-
-    return 0;
 }
 
 int gerarId(Registro lista[], int total) {
@@ -78,296 +309,41 @@ int gerarId(Registro lista[], int total) {
     return maior + 1;
 }
 
-void mostrarRegistro(Registro r, char c1[], char c2[], char c3[]) {
-    printf("\nID: %d\n", r.id);
-    printf("Tipo: %s\n", r.tipo);
-    printf("Nome: %s\n", r.nome);
-    printf("Idade: %d\n", r.idade);
-    printf("%s: %s\n", c1, r.campo1);
-    printf("%s: %s\n", c2, r.campo2);
-    printf("%s: %s\n", c3, r.campo3);
-    printf("Email: %s\n", r.email);
-}
-
-void listar(Registro lista[], int total, char c1[], char c2[], char c3[]) {
+void copiarRegistros(Registro destino[], int *total, Registro origem[], int qtd) {
     int i;
 
-    if (total == 0) {
-        printf("\nNenhum registro cadastrado.\n");
-        return;
+    for (i = 0; i < qtd && i < MAX; i++) {
+        destino[i] = origem[i];
     }
 
-    for (i = 0; i < total; i++) {
-        mostrarRegistro(lista[i], c1, c2, c3);
-        printf("-----------------------------\n");
-    }
+    *total = qtd;
 }
 
-void cadastrar(Registro lista[], int *total, char arquivo[], char c1[], char c2[], char c3[]) {
-    Registro novo;
-    int i;
-
-    if (*total >= MAX) {
-        printf("\nLimite de cadastros atingido.\n");
-        return;
-    }
-
-    novo.id = gerarId(lista, *total);
-
-    printf("\nTipo: ");
-    fgets(novo.tipo, 40, stdin);
-    removerEnter(novo.tipo);
-
-    printf("Nome: ");
-    fgets(novo.nome, 100, stdin);
-    removerEnter(novo.nome);
-
-    for (i = 0; i < *total; i++) {
-        if (strcmp(lista[i].nome, novo.nome) == 0) {
-            printf("\nAviso: ja existe alguem com esse nome.\n");
-            printf("ID: %d | Tipo: %s | %s: %s | %s: %s\n",
-                   lista[i].id, lista[i].tipo, c1, lista[i].campo1, c2, lista[i].campo2);
-        }
-    }
-
-    printf("Idade: ");
-    scanf("%d", &novo.idade);
-    limparBuffer();
-
-    printf("%s: ", c1);
-    fgets(novo.campo1, 100, stdin);
-    removerEnter(novo.campo1);
-
-    printf("%s: ", c2);
-    fgets(novo.campo2, 100, stdin);
-    removerEnter(novo.campo2);
-
-    printf("%s: ", c3);
-    fgets(novo.campo3, 100, stdin);
-    removerEnter(novo.campo3);
-
-    printf("Email: ");
-    fgets(novo.email, 100, stdin);
-    removerEnter(novo.email);
-
-    lista[*total] = novo;
-    (*total)++;
-
-    salvar(arquivo, lista, *total);
-
-    printf("\nCadastro realizado com sucesso! ID gerado: %d\n", novo.id);
-}
-
-void buscar(Registro lista[], int total, char c1[], char c2[], char c3[]) {
-    int opcao, id, i, encontrados[MAX], qtd = 0, escolha;
-    char nome[100];
-
-    printf("\nBuscar por:\n");
-    printf("1 - ID\n");
-    printf("2 - Nome\n");
-    printf("Escolha: ");
-    scanf("%d", &opcao);
-    limparBuffer();
-
-    if (opcao == 1) {
-        printf("Digite o ID: ");
-        scanf("%d", &id);
-
-        for (i = 0; i < total; i++) {
-            if (lista[i].id == id) {
-                printf("\nRegistro encontrado:\n");
-                mostrarRegistro(lista[i], c1, c2, c3);
-                return;
-            }
-        }
-
-        printf("\nRegistro nao encontrado.\n");
-    } else if (opcao == 2) {
-        printf("Digite o nome: ");
-        fgets(nome, 100, stdin);
-        removerEnter(nome);
-
-        for (i = 0; i < total; i++) {
-            if (strstr(lista[i].nome, nome) != NULL) {
-                encontrados[qtd] = i;
-                qtd++;
-            }
-        }
-
-        if (qtd == 0) {
-            printf("\nNenhum registro encontrado.\n");
-        } else if (qtd == 1) {
-            mostrarRegistro(lista[encontrados[0]], c1, c2, c3);
-        } else {
-            printf("\nForam encontrados %d registros parecidos.\n", qtd);
-
-            for (i = 0; i < qtd; i++) {
-                int pos = encontrados[i];
-
-                printf("\n[%d]\n", i + 1);
-                printf("ID: %d\n", lista[pos].id);
-                printf("Tipo: %s\n", lista[pos].tipo);
-                printf("Nome: %s\n", lista[pos].nome);
-                printf("%s: %s\n", c1, lista[pos].campo1);
-                printf("%s: %s\n", c2, lista[pos].campo2);
-                printf("Email: %s\n", lista[pos].email);
-            }
-
-            printf("\nEscolha o numero correto: ");
-            scanf("%d", &escolha);
-
-            if (escolha >= 1 && escolha <= qtd) {
-                mostrarRegistro(lista[encontrados[escolha - 1]], c1, c2, c3);
-            } else {
-                printf("\nOpcao invalida.\n");
-            }
-        }
+void configurarRotulosBanco(Banco *b, int modelo) {
+    if (modelo == 0) {
+        strcpy(b->titulo, "ESCOLA");
+        strcpy(b->c1, "Serie/Disciplina");
+        strcpy(b->c2, "Turno/Turma");
+        strcpy(b->c3, "Curso/Horario");
+    } else if (modelo == 1) {
+        strcpy(b->titulo, "HOSPITAL");
+        strcpy(b->c1, "Diagnostico/Especialidade");
+        strcpy(b->c2, "Quarto/Sala");
+        strcpy(b->c3, "Medico/Horario");
+    } else if (modelo == 2) {
+        strcpy(b->titulo, "BIBLIOTECA");
+        strcpy(b->c1, "Livro/Autor");
+        strcpy(b->c2, "Data/Genero");
+        strcpy(b->c3, "Status/Funcao");
     } else {
-        printf("\nOpcao invalida.\n");
+        strcpy(b->titulo, "LOJA");
+        strcpy(b->c1, "Categoria/Cargo");
+        strcpy(b->c2, "Preco/Setor");
+        strcpy(b->c3, "Quantidade/Horario");
     }
 }
 
-void editar(Registro lista[], int total, char arquivo[], char c1[], char c2[], char c3[]) {
-    int id, i;
-
-    printf("\nDigite o ID para editar: ");
-    scanf("%d", &id);
-    limparBuffer();
-
-    for (i = 0; i < total; i++) {
-        if (lista[i].id == id) {
-            printf("\nEditando: %s\n", lista[i].nome);
-
-            printf("Novo tipo: ");
-            fgets(lista[i].tipo, 40, stdin);
-            removerEnter(lista[i].tipo);
-
-            printf("Novo nome: ");
-            fgets(lista[i].nome, 100, stdin);
-            removerEnter(lista[i].nome);
-
-            printf("Nova idade: ");
-            scanf("%d", &lista[i].idade);
-            limparBuffer();
-
-            printf("Novo %s: ", c1);
-            fgets(lista[i].campo1, 100, stdin);
-            removerEnter(lista[i].campo1);
-
-            printf("Novo %s: ", c2);
-            fgets(lista[i].campo2, 100, stdin);
-            removerEnter(lista[i].campo2);
-
-            printf("Novo %s: ", c3);
-            fgets(lista[i].campo3, 100, stdin);
-            removerEnter(lista[i].campo3);
-
-            printf("Novo email: ");
-            fgets(lista[i].email, 100, stdin);
-            removerEnter(lista[i].email);
-
-            salvar(arquivo, lista, total);
-
-            printf("\nRegistro editado com sucesso.\n");
-            return;
-        }
-    }
-
-    printf("\nRegistro nao encontrado.\n");
-}
-
-void excluir(Registro lista[], int *total, char arquivo[]) {
-    int id, i, j;
-
-    printf("\nDigite o ID para excluir: ");
-    scanf("%d", &id);
-
-    for (i = 0; i < *total; i++) {
-        if (lista[i].id == id) {
-            printf("\nExcluindo: %s\n", lista[i].nome);
-
-            for (j = i; j < *total - 1; j++) {
-                lista[j] = lista[j + 1];
-            }
-
-            (*total)--;
-            salvar(arquivo, lista, *total);
-
-            printf("\nRegistro excluido com sucesso.\n");
-            return;
-        }
-    }
-
-    printf("\nRegistro nao encontrado.\n");
-}
-
-void preencherIniciais(Registro lista[], int *total, Registro iniciais[], int qtd, char arquivo[]) {
-    int i;
-
-    if (*total == 0) {
-        for (i = 0; i < qtd; i++) {
-            lista[i] = iniciais[i];
-        }
-
-        *total = qtd;
-        salvar(arquivo, lista, *total);
-    }
-}
-
-void menuBanco(char titulo[], char arquivo[], Registro lista[], int *total, char c1[], char c2[], char c3[]) {
-    int opcao;
-
-    do {
-        printf("\n====================================\n");
-        printf("BANCO DE DADOS: %s\n", titulo);
-        printf("====================================\n");
-        printf("1 - Cadastrar\n");
-        printf("2 - Listar todos\n");
-        printf("3 - Buscar\n");
-        printf("4 - Editar\n");
-        printf("5 - Excluir\n");
-        printf("0 - Voltar\n");
-        printf("Escolha uma opcao: ");
-        scanf("%d", &opcao);
-        limparBuffer();
-
-        switch (opcao) {
-            case 1:
-                cadastrar(lista, total, arquivo, c1, c2, c3);
-                break;
-            case 2:
-                listar(lista, *total, c1, c2, c3);
-                break;
-            case 3:
-                buscar(lista, *total, c1, c2, c3);
-                break;
-            case 4:
-                editar(lista, *total, arquivo, c1, c2, c3);
-                break;
-            case 5:
-                excluir(lista, total, arquivo);
-                break;
-            case 0:
-                printf("\nVoltando...\n");
-                break;
-            default:
-                printf("\nOpcao invalida.\n");
-        }
-
-    } while (opcao != 0);
-}
-
-int main() {
-    Registro escola[MAX];
-    Registro hospital[MAX];
-    Registro biblioteca[MAX];
-    Registro loja[MAX];
-
-    int totalEscola = carregar("escola.dat", escola);
-    int totalHospital = carregar("hospital.dat", hospital);
-    int totalBiblioteca = carregar("biblioteca.dat", biblioteca);
-    int totalLoja = carregar("loja.dat", loja);
-
+void carregarModeloInicial(Banco *b, int modelo) {
     Registro escolaInicial[] = {
         {1, "Aluno", "Joao Pedro", 15, "1 Ano", "Manha", "Informatica", "joao@email.com"},
         {2, "Aluno", "Maria Eduarda", 15, "1 Ano", "Manha", "Informatica", "maria@email.com"},
@@ -428,47 +404,798 @@ int main() {
         {8, "Funcionario", "Sofia Ramos", 22, "Caixa", "Financeiro", "Tarde", "sofia@loja.com"}
     };
 
-    preencherIniciais(escola, &totalEscola, escolaInicial, 20, "escola.dat");
-    preencherIniciais(hospital, &totalHospital, hospitalInicial, 10, "hospital.dat");
-    preencherIniciais(biblioteca, &totalBiblioteca, bibliotecaInicial, 10, "biblioteca.dat");
-    preencherIniciais(loja, &totalLoja, lojaInicial, 8, "loja.dat");
+    if (modelo == 0) copiarRegistros(b->lista, &b->total, escolaInicial, 20);
+    else if (modelo == 1) copiarRegistros(b->lista, &b->total, hospitalInicial, 10);
+    else if (modelo == 2) copiarRegistros(b->lista, &b->total, bibliotecaInicial, 10);
+    else copiarRegistros(b->lista, &b->total, lojaInicial, 8);
+}
 
-    int opcao;
+int contemTexto(const char *texto, const char *filtro) {
+    char a[300];
+    char b[120];
+    int i;
 
-    do {
-        printf("\n====================================\n");
-        printf("SISTEMA DE BANCO DE DADOS\n");
-        printf("====================================\n");
-        printf("1 - Escola\n");
-        printf("2 - Hospital\n");
-        printf("3 - Biblioteca\n");
-        printf("4 - Loja\n");
-        printf("0 - Sair\n");
-        printf("Escolha um banco: ");
-        scanf("%d", &opcao);
-        limparBuffer();
+    if (filtro == NULL || strlen(filtro) == 0) {
+        return 1;
+    }
 
-        switch (opcao) {
-            case 1:
-                menuBanco("ESCOLA", "escola.dat", escola, &totalEscola, "Serie/Disciplina", "Turno/Turma", "Curso/Horario");
-                break;
-            case 2:
-                menuBanco("HOSPITAL", "hospital.dat", hospital, &totalHospital, "Diagnostico/Especialidade", "Quarto/Sala", "Medico/Horario");
-                break;
-            case 3:
-                menuBanco("BIBLIOTECA", "biblioteca.dat", biblioteca, &totalBiblioteca, "Livro/Autor", "Data/Genero", "Status/Funcao");
-                break;
-            case 4:
-                menuBanco("LOJA", "loja.dat", loja, &totalLoja, "Categoria/Cargo", "Preco/Setor", "Quantidade/Horario");
-                break;
-            case 0:
-                printf("\nSaindo do sistema...\n");
-                break;
-            default:
-                printf("\nOpcao invalida.\n");
+    strncpy(a, texto, sizeof(a) - 1);
+    a[sizeof(a) - 1] = '\0';
+
+    strncpy(b, filtro, sizeof(b) - 1);
+    b[sizeof(b) - 1] = '\0';
+
+    for (i = 0; a[i]; i++) a[i] = (char)tolower((unsigned char)a[i]);
+    for (i = 0; b[i]; i++) b[i] = (char)tolower((unsigned char)b[i]);
+
+    return strstr(a, b) != NULL;
+}
+
+void atualizarLista(const char *filtro) {
+    int i;
+    char linha[520];
+    Banco *b = &bancos[bancoAtual];
+
+    SendMessageA(hLista, LB_RESETCONTENT, 0, 0);
+
+    for (i = 0; i < b->total; i++) {
+        char idTxt[30];
+        int mostrar = 0;
+
+        sprintf(idTxt, "%d", b->lista[i].id);
+
+        if (contemTexto(idTxt, filtro) ||
+            contemTexto(b->lista[i].nome, filtro) ||
+            contemTexto(b->lista[i].tipo, filtro) ||
+            contemTexto(b->lista[i].campo1, filtro) ||
+            contemTexto(b->lista[i].campo2, filtro) ||
+            contemTexto(b->lista[i].campo3, filtro) ||
+            contemTexto(b->lista[i].email, filtro)) {
+            mostrar = 1;
         }
 
-    } while (opcao != 0);
+        if (mostrar) {
+            sprintf(linha, "#%03d | %-11s | %-24s | %s: %-18s | %s",
+                    b->lista[i].id,
+                    b->lista[i].tipo,
+                    b->lista[i].nome,
+                    b->c1,
+                    b->lista[i].campo1,
+                    b->lista[i].email);
 
-    return 0;
+            int pos = (int)SendMessageA(hLista, LB_ADDSTRING, 0, (LPARAM)linha);
+            SendMessageA(hLista, LB_SETITEMDATA, pos, i);
+        }
+    }
+
+    sprintf(linha, "Banco: %s | Registros: %d | Pasta: %s", b->titulo, b->total, b->pastaBanco);
+    setStatus(linha);
+    InvalidateRect(hJanela, NULL, FALSE);
+}
+
+void limparCampos() {
+    char idTxt[30];
+    Banco *b = &bancos[bancoAtual];
+
+    sprintf(idTxt, "%d", gerarId(b->lista, b->total));
+
+    setTexto(hId, idTxt);
+    setTexto(hTipo, "");
+    setTexto(hNome, "");
+    setTexto(hIdade, "");
+    setTexto(hCampo1, "");
+    setTexto(hCampo2, "");
+    setTexto(hCampo3, "");
+    setTexto(hEmail, "");
+    SendMessageA(hLista, LB_SETCURSEL, (WPARAM)-1, 0);
+
+    setStatus("Campos limpos. Digite os dados e clique em Salvar cadastro.");
+}
+
+void mostrarRegistroNosCampos(Registro r) {
+    char txt[120];
+
+    sprintf(txt, "%d", r.id);
+    setTexto(hId, txt);
+    setTexto(hTipo, r.tipo);
+    setTexto(hNome, r.nome);
+    sprintf(txt, "%d", r.idade);
+    setTexto(hIdade, txt);
+    setTexto(hCampo1, r.campo1);
+    setTexto(hCampo2, r.campo2);
+    setTexto(hCampo3, r.campo3);
+    setTexto(hEmail, r.email);
+}
+
+int indicePorId(Banco *b, int id) {
+    int i;
+
+    for (i = 0; i < b->total; i++) {
+        if (b->lista[i].id == id) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void buscarRegistros() {
+    char filtro[120];
+    getTexto(hBusca, filtro, 120);
+    atualizarLista(filtro);
+}
+
+void selecionarDaLista() {
+    int sel = (int)SendMessageA(hLista, LB_GETCURSEL, 0, 0);
+    int indice;
+    Banco *b = &bancos[bancoAtual];
+
+    if (sel == LB_ERR) {
+        return;
+    }
+
+    indice = (int)SendMessageA(hLista, LB_GETITEMDATA, sel, 0);
+
+    if (indice >= 0 && indice < b->total) {
+        mostrarRegistroNosCampos(b->lista[indice]);
+        setStatus("Registro selecionado. Edite os campos e clique em Salvar cadastro.");
+    }
+}
+
+void salvarRegistroDaTela() {
+    Banco *b = &bancos[bancoAtual];
+    Registro r;
+    char txt[120];
+    int pos;
+
+    getTexto(hId, txt, 30);
+    r.id = atoi(txt);
+
+    if (r.id <= 0) {
+        r.id = gerarId(b->lista, b->total);
+    }
+
+    getTexto(hTipo, r.tipo, 40);
+    getTexto(hNome, r.nome, 100);
+    getTexto(hIdade, txt, 30);
+    r.idade = atoi(txt);
+    getTexto(hCampo1, r.campo1, 100);
+    getTexto(hCampo2, r.campo2, 100);
+    getTexto(hCampo3, r.campo3, 100);
+    getTexto(hEmail, r.email, 100);
+
+    if (strlen(r.tipo) == 0 || strlen(r.nome) == 0) {
+        MessageBoxA(hJanela, "Preencha pelo menos Tipo e Nome.", "Campos obrigatorios", MB_ICONWARNING);
+        return;
+    }
+
+    pos = indicePorId(b, r.id);
+
+    if (pos >= 0) {
+        b->lista[pos] = r;
+        salvar(b->arquivo, b->lista, b->total);
+        salvarInfoBanco(b, bancoAtual, b->titulo);
+        atualizarLista("");
+        MessageBoxA(hJanela, "Registro editado e salvo com sucesso.", "Sucesso", MB_ICONINFORMATION);
+        return;
+    }
+
+    if (b->total >= MAX) {
+        MessageBoxA(hJanela, "Limite de cadastros atingido.", "Aviso", MB_ICONWARNING);
+        return;
+    }
+
+    {
+        int i;
+        char aviso[1000];
+        strcpy(aviso, "");
+
+        for (i = 0; i < b->total; i++) {
+            if (strcmp(b->lista[i].nome, r.nome) == 0) {
+                char temp[220];
+
+                sprintf(temp, "Nome repetido encontrado:\nID: %d | Tipo: %s | %s: %s\n\n",
+                        b->lista[i].id,
+                        b->lista[i].tipo,
+                        b->c1,
+                        b->lista[i].campo1);
+
+                strcat(aviso, temp);
+            }
+        }
+
+        if (strlen(aviso) > 0) {
+            strcat(aviso, "O cadastro sera salvo mesmo assim, com ID diferente.");
+            MessageBoxA(hJanela, aviso, "Aviso", MB_ICONWARNING);
+        }
+    }
+
+    b->lista[b->total] = r;
+    b->total++;
+
+    salvar(b->arquivo, b->lista, b->total);
+    salvarInfoBanco(b, bancoAtual, b->titulo);
+    atualizarLista("");
+    limparCampos();
+
+    MessageBoxA(hJanela, "Cadastro salvo com sucesso.", "Sucesso", MB_ICONINFORMATION);
+}
+
+void excluirSelecionado() {
+    Banco *b = &bancos[bancoAtual];
+    char txt[30];
+    int id, pos, i;
+
+    getTexto(hId, txt, 30);
+    id = atoi(txt);
+    pos = indicePorId(b, id);
+
+    if (pos < 0) {
+        MessageBoxA(hJanela, "Selecione um registro ou digite um ID valido.", "Registro nao encontrado", MB_ICONWARNING);
+        return;
+    }
+
+    if (MessageBoxA(hJanela, "Deseja realmente excluir este registro?", "Confirmar exclusao",
+                    MB_YESNO | MB_ICONQUESTION) != IDYES) {
+        return;
+    }
+
+    for (i = pos; i < b->total - 1; i++) {
+        b->lista[i] = b->lista[i + 1];
+    }
+
+    b->total--;
+
+    salvar(b->arquivo, b->lista, b->total);
+    salvarInfoBanco(b, bancoAtual, b->titulo);
+    atualizarLista("");
+    limparCampos();
+
+    MessageBoxA(hJanela, "Registro excluido com sucesso.", "Sucesso", MB_ICONINFORMATION);
+}
+
+void abrirBancoPorNome(int criarNovo) {
+    int modelo;
+    char nomeBanco[120];
+    char caminho[360];
+    char pasta[360];
+    char msg[750];
+    Banco *b;
+
+    modelo = (int)SendMessageA(hComboModelo, CB_GETCURSEL, 0, 0);
+    if (modelo < 0 || modelo > 3) {
+        modelo = 0;
+    }
+
+    getTexto(hNomeBanco, nomeBanco, 120);
+    limparNomeArquivo(nomeBanco);
+
+    montarPastaBanco(pasta, modelo, nomeBanco);
+    montarArquivoBanco(caminho, modelo, nomeBanco);
+
+    bancoAtual = modelo;
+    b = &bancos[bancoAtual];
+
+    configurarRotulosBanco(b, modelo);
+    strcpy(b->pastaBanco, pasta);
+    strcpy(b->arquivo, caminho);
+
+    if (criarNovo) {
+        criarPastaSeNaoExistir(pasta);
+
+        if (arquivoExiste(caminho)) {
+            if (MessageBoxA(hJanela, "Ja existe um banco com esse nome. Deseja substituir?", "Banco ja existe",
+                            MB_YESNO | MB_ICONQUESTION) != IDYES) {
+                return;
+            }
+        }
+
+        carregarModeloInicial(b, modelo);
+        salvar(b->arquivo, b->lista, b->total);
+        salvarInfoBanco(b, modelo, nomeBanco);
+
+        SendMessageA(hComboBanco, CB_SETCURSEL, modelo, 0);
+        atualizarBancoAtual();
+
+        sprintf(msg, "Banco criado com sucesso!\n\nPasta:\n%s\n\nArquivo:\n%s", b->pastaBanco, b->arquivo);
+        MessageBoxA(hJanela, msg, "Banco criado", MB_ICONINFORMATION);
+    } else {
+        if (!arquivoExiste(caminho)) {
+            MessageBoxA(hJanela, "Esse banco ainda nao existe. Confira o nome ou clique em Criar banco.",
+                        "Banco nao encontrado", MB_ICONWARNING);
+            return;
+        }
+
+        b->total = carregar(b->arquivo, b->lista);
+
+        SendMessageA(hComboBanco, CB_SETCURSEL, modelo, 0);
+        atualizarBancoAtual();
+
+        sprintf(msg, "Banco aberto com sucesso!\n\nPasta:\n%s", b->pastaBanco);
+        MessageBoxA(hJanela, msg, "Banco aberto", MB_ICONINFORMATION);
+    }
+}
+
+void atualizarBancoAtual() {
+    Banco *b = &bancos[bancoAtual];
+    char titulo[160];
+
+    sprintf(titulo, "Sistema de Banco de Dados - %s", b->titulo);
+    SetWindowTextA(hJanela, titulo);
+
+    setTexto(hLblCampo1, b->c1);
+    setTexto(hLblCampo2, b->c2);
+    setTexto(hLblCampo3, b->c3);
+    setTexto(hBusca, "");
+
+    atualizarLista("");
+    limparCampos();
+
+    InvalidateRect(hJanela, NULL, FALSE);
+}
+
+HWND criarControle(char classe[], char texto[], DWORD estilo, int x, int y, int largura, int altura, HWND pai, int id) {
+    HWND controle = CreateWindowExA(0, classe, texto, estilo, x, y, largura, altura, pai, (HMENU)(INT_PTR)id, hInst, NULL);
+    SendMessageA(controle, WM_SETFONT, (WPARAM)fonteNormal, TRUE);
+    return controle;
+}
+
+HWND criarEdit(int x, int y, int w, int h, int id) {
+    HWND controle = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+                                    x, y, w, h, hJanela, (HMENU)(INT_PTR)id, hInst, NULL);
+    SendMessageA(controle, WM_SETFONT, (WPARAM)fonteNormal, TRUE);
+    return controle;
+}
+
+HWND criarLabel(char texto[], int x, int y, int w, int h, int id) {
+    HWND controle = criarControle("STATIC", texto, WS_CHILD | WS_VISIBLE, x, y, w, h, hJanela, id);
+    SendMessageA(controle, WM_SETFONT, (WPARAM)fontePequena, TRUE);
+    return controle;
+}
+
+HWND criarBotao(char texto[], int x, int y, int w, int h, int id, int tipo) {
+    HWND botao = criarControle("BUTTON", texto, WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                               x, y, w, h, hJanela, id);
+
+    SetWindowLongPtrA(botao, GWLP_USERDATA, tipo);
+    SendMessageA(botao, WM_SETFONT, (WPARAM)fonteBotao, TRUE);
+    return botao;
+}
+
+void criarInterface(HWND hwnd) {
+    criarLabel("DATAFLOW C", 30, 28, 200, 30, 0);
+    criarLabel("Banco de dados visual", 30, 60, 200, 24, 0);
+
+    criarLabel("Modelo", 30, 120, 200, 22, ID_LBL_MODELO);
+
+    hComboModelo = criarControle("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST,
+                                  30, 145, 200, 200, hwnd, ID_MODO_MODELO);
+
+    SendMessageA(hComboModelo, CB_ADDSTRING, 0, (LPARAM)"Escola");
+    SendMessageA(hComboModelo, CB_ADDSTRING, 0, (LPARAM)"Hospital");
+    SendMessageA(hComboModelo, CB_ADDSTRING, 0, (LPARAM)"Biblioteca");
+    SendMessageA(hComboModelo, CB_ADDSTRING, 0, (LPARAM)"Loja");
+    SendMessageA(hComboModelo, CB_SETCURSEL, 0, 0);
+
+    criarLabel("Nome do banco", 30, 190, 200, 22, ID_LBL_NOME_BANCO);
+    hNomeBanco = criarEdit(30, 215, 200, 30, ID_NOME_BANCO);
+    setTexto(hNomeBanco, "principal");
+
+    criarBotao("Criar banco", 30, 265, 200, 36, ID_BTN_CRIAR_BANCO, BTN_AZUL);
+    criarBotao("Entrar existente", 30, 312, 200, 36, ID_BTN_ENTRAR_BANCO, BTN_ESCURO);
+    criarBotao("Abrir pasta", 30, 359, 200, 36, ID_BTN_ABRIR_PASTA, BTN_CLARO);
+
+    criarLabel("Banco aberto", 30, 430, 200, 22, ID_LBL_BANCO_ABERTO);
+
+    hComboBanco = criarControle("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST,
+                                 30, 455, 200, 200, hwnd, ID_COMBO_BANCO);
+
+    SendMessageA(hComboBanco, CB_ADDSTRING, 0, (LPARAM)"Escola");
+    SendMessageA(hComboBanco, CB_ADDSTRING, 0, (LPARAM)"Hospital");
+    SendMessageA(hComboBanco, CB_ADDSTRING, 0, (LPARAM)"Biblioteca");
+    SendMessageA(hComboBanco, CB_ADDSTRING, 0, (LPARAM)"Loja");
+    SendMessageA(hComboBanco, CB_SETCURSEL, 0, 0);
+
+    criarLabel("Buscar por ID, nome, tipo, campos ou email", 295, 125, 330, 22, ID_LBL_BUSCA);
+    hBusca = criarEdit(295, 150, 470, 30, ID_BUSCA);
+    criarBotao("Buscar", 780, 150, 95, 30, ID_BTN_BUSCAR, BTN_AZUL);
+    criarBotao("Listar todos", 890, 150, 125, 30, ID_BTN_LISTAR, BTN_CLARO);
+
+    hLista = criarControle("LISTBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | LBS_NOTIFY,
+                            295, 215, 720, 220, hwnd, ID_LISTA);
+
+    SendMessageA(hLista, WM_SETFONT, (WPARAM)fonteLista, TRUE);
+
+    criarLabel("ID", 295, 505, 60, 22, ID_LBL_ID);
+    hId = criarEdit(295, 530, 90, 30, ID_TXT_ID);
+    EnableWindow(hId, FALSE);
+
+    criarLabel("Tipo", 405, 505, 90, 22, ID_LBL_TIPO);
+    hTipo = criarEdit(405, 530, 210, 30, ID_TXT_TIPO);
+
+    criarLabel("Nome", 635, 505, 90, 22, ID_LBL_NOME);
+    hNome = criarEdit(635, 530, 380, 30, ID_TXT_NOME);
+
+    criarLabel("Idade/Ano", 295, 580, 110, 22, ID_LBL_IDADE);
+    hIdade = criarEdit(295, 605, 110, 30, ID_TXT_IDADE);
+
+    hLblCampo1 = criarLabel("Campo 1", 425, 580, 180, 22, ID_LBL_CAMPO1);
+    hCampo1 = criarEdit(425, 605, 250, 30, ID_TXT_CAMPO1);
+
+    hLblCampo2 = criarLabel("Campo 2", 695, 580, 180, 22, ID_LBL_CAMPO2);
+    hCampo2 = criarEdit(695, 605, 320, 30, ID_TXT_CAMPO2);
+
+    hLblCampo3 = criarLabel("Campo 3", 295, 655, 180, 22, ID_LBL_CAMPO3);
+    hCampo3 = criarEdit(295, 680, 300, 30, ID_TXT_CAMPO3);
+
+    criarLabel("Email / Contato", 615, 655, 180, 22, ID_LBL_EMAIL);
+    hEmail = criarEdit(615, 680, 400, 30, ID_TXT_EMAIL);
+
+    criarBotao("Novo", 295, 735, 115, 36, ID_BTN_NOVO, BTN_CLARO);
+    criarBotao("Salvar cadastro", 425, 735, 170, 36, ID_BTN_SALVAR, BTN_VERDE);
+    criarBotao("Excluir", 610, 735, 120, 36, ID_BTN_EXCLUIR, BTN_VERMELHO);
+    criarBotao("Limpar", 745, 735, 120, 36, ID_BTN_LIMPAR, BTN_CLARO);
+
+    hStatus = criarControle("STATIC", "", WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE,
+                             295, 795, 720, 28, hwnd, ID_STATUS);
+    SendMessageA(hStatus, WM_SETFONT, (WPARAM)fontePequena, TRUE);
+}
+
+void inicializarBancos() {
+    int i;
+    char pasta[360];
+    char arquivo[360];
+
+    criarPastaDados();
+
+    for (i = 0; i < 4; i++) {
+        configurarRotulosBanco(&bancos[i], i);
+
+        montarPastaBanco(pasta, i, "principal");
+        criarPastaSeNaoExistir(pasta);
+
+        montarArquivoBanco(arquivo, i, "principal");
+
+        strcpy(bancos[i].pastaBanco, pasta);
+        strcpy(bancos[i].arquivo, arquivo);
+
+        bancos[i].total = carregar(bancos[i].arquivo, bancos[i].lista);
+
+        if (bancos[i].total == 0) {
+            carregarModeloInicial(&bancos[i], i);
+            salvar(bancos[i].arquivo, bancos[i].lista, bancos[i].total);
+            salvarInfoBanco(&bancos[i], i, "principal");
+        }
+    }
+}
+
+void desenharTexto(HDC hdc, const char *texto, int x, int y, int w, int h, HFONT fonte, COLORREF cor, UINT formato) {
+    RECT r;
+
+    r.left = x;
+    r.top = y;
+    r.right = x + w;
+    r.bottom = y + h;
+
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, cor);
+    SelectObject(hdc, fonte);
+    DrawTextA(hdc, texto, -1, &r, formato);
+}
+
+void desenharCard(HDC hdc, int x, int y, int w, int h) {
+    HBRUSH b = CreateSolidBrush(COR_CARD);
+    HPEN p = CreatePen(PS_SOLID, 1, COR_BORDA);
+    HGDIOBJ oldB = SelectObject(hdc, b);
+    HGDIOBJ oldP = SelectObject(hdc, p);
+
+    RoundRect(hdc, x, y, x + w, y + h, 18, 18);
+
+    SelectObject(hdc, oldB);
+    SelectObject(hdc, oldP);
+
+    DeleteObject(b);
+    DeleteObject(p);
+}
+
+void desenharInterface(HDC hdc) {
+    RECT rc;
+    char titulo[180];
+    char resumo[120];
+    Banco *b = &bancos[bancoAtual];
+
+    GetClientRect(hJanela, &rc);
+
+    {
+        HBRUSH fundo = CreateSolidBrush(COR_FUNDO);
+        FillRect(hdc, &rc, fundo);
+        DeleteObject(fundo);
+    }
+
+    {
+        RECT side = {0, 0, 260, rc.bottom};
+        RECT topSide = {0, 0, 260, 100};
+        HBRUSH b1 = CreateSolidBrush(COR_SIDEBAR);
+        HBRUSH b2 = CreateSolidBrush(COR_SIDEBAR_CLARA);
+
+        FillRect(hdc, &side, b1);
+        FillRect(hdc, &topSide, b2);
+
+        DeleteObject(b1);
+        DeleteObject(b2);
+    }
+
+    desenharCard(hdc, 280, 20, 750, 85);
+    desenharCard(hdc, 280, 120, 750, 75);
+    desenharCard(hdc, 280, 205, 750, 245);
+    desenharCard(hdc, 280, 470, 750, 320);
+
+    desenharTexto(hdc, "DATAFLOW C", 30, 26, 200, 30, fonteTitulo, RGB(255,255,255), DT_LEFT | DT_VCENTER);
+    desenharTexto(hdc, "Banco de dados visual", 30, 60, 200, 24, fontePequena, RGB(210,230,255), DT_LEFT | DT_VCENTER);
+
+    sprintf(titulo, "Banco de Dados - %s", b->titulo);
+    desenharTexto(hdc, titulo, 295, 34, 480, 32, fonteTitulo, COR_TEXTO, DT_LEFT | DT_VCENTER);
+    desenharTexto(hdc, "Interface melhorada para CodeBlocks, com arquivos salvos em pasta propria.",
+                  295, 68, 600, 22, fontePequena, COR_MUTED, DT_LEFT | DT_VCENTER);
+
+    sprintf(resumo, "%d registros", b->total);
+    desenharTexto(hdc, resumo, 855, 42, 150, 26, fonteSubtitulo, COR_AZUL, DT_RIGHT | DT_VCENTER);
+
+    desenharTexto(hdc, "Registros cadastrados", 295, 190, 260, 24, fonteSubtitulo, COR_TEXTO, DT_LEFT | DT_VCENTER);
+    desenharTexto(hdc, "Formulario", 295, 474, 260, 28, fonteSubtitulo, COR_TEXTO, DT_LEFT | DT_VCENTER);
+    desenharTexto(hdc, "Selecione na lista para editar, ou clique em Novo para cadastrar outro.",
+                  540, 478, 470, 22, fontePequena, COR_MUTED, DT_RIGHT | DT_VCENTER);
+}
+
+void desenharBotao(LPDRAWITEMSTRUCT d) {
+    int tipo = (int)GetWindowLongPtrA(d->hwndItem, GWLP_USERDATA);
+    COLORREF cor = COR_AZUL;
+    COLORREF corTexto = RGB(255,255,255);
+    char texto[120];
+    HBRUSH brush;
+    HPEN pen;
+    HGDIOBJ oldBrush, oldPen;
+    RECT r;
+
+    if (tipo == BTN_AZUL) {
+        cor = COR_AZUL;
+        corTexto = RGB(255,255,255);
+    } else if (tipo == BTN_VERDE) {
+        cor = COR_VERDE;
+        corTexto = RGB(255,255,255);
+    } else if (tipo == BTN_VERMELHO) {
+        cor = COR_VERMELHO;
+        corTexto = RGB(255,255,255);
+    } else if (tipo == BTN_ESCURO) {
+        cor = RGB(30, 64, 120);
+        corTexto = RGB(255,255,255);
+    } else {
+        cor = RGB(226, 235, 247);
+        corTexto = RGB(27, 65, 120);
+    }
+
+    if (d->itemState & ODS_SELECTED) {
+        if (tipo == BTN_CLARO) {
+            cor = RGB(210, 224, 245);
+        } else {
+            cor = RGB(GetRValue(cor) > 25 ? GetRValue(cor) - 20 : 0,
+                      GetGValue(cor) > 25 ? GetGValue(cor) - 20 : 0,
+                      GetBValue(cor) > 25 ? GetBValue(cor) - 20 : 0);
+        }
+    }
+
+    GetWindowTextA(d->hwndItem, texto, sizeof(texto));
+
+    brush = CreateSolidBrush(cor);
+    pen = CreatePen(PS_SOLID, 1, cor);
+
+    oldBrush = SelectObject(d->hDC, brush);
+    oldPen = SelectObject(d->hDC, pen);
+
+    RoundRect(d->hDC, d->rcItem.left, d->rcItem.top, d->rcItem.right, d->rcItem.bottom, 14, 14);
+
+    SelectObject(d->hDC, oldBrush);
+    SelectObject(d->hDC, oldPen);
+
+    DeleteObject(brush);
+    DeleteObject(pen);
+
+    r = d->rcItem;
+
+    SetBkMode(d->hDC, TRANSPARENT);
+    SetTextColor(d->hDC, corTexto);
+    SelectObject(d->hDC, fonteBotao);
+    DrawTextA(d->hDC, texto, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
+
+LRESULT CALLBACK JanelaProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_CREATE:
+            hJanela = hwnd;
+            criarFontes();
+            criarBrushes();
+            inicializarBancos();
+            criarInterface(hwnd);
+            atualizarBancoAtual();
+            return 0;
+
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+            desenharInterface(hdc);
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+
+        case WM_DRAWITEM:
+            if (((LPDRAWITEMSTRUCT)lParam)->CtlType == ODT_BUTTON) {
+                desenharBotao((LPDRAWITEMSTRUCT)lParam);
+                return TRUE;
+            }
+            break;
+
+        case WM_CTLCOLORSTATIC: {
+            HDC hdc = (HDC)wParam;
+            HWND hCtrl = (HWND)lParam;
+            RECT tela;
+            POINT p;
+
+            SetBkMode(hdc, TRANSPARENT);
+
+            if (hCtrl == hStatus) {
+                SetTextColor(hdc, COR_MUTED);
+                return (LRESULT)brushCard;
+            }
+
+            GetWindowRect(hCtrl, &tela);
+            p.x = tela.left;
+            p.y = tela.top;
+            ScreenToClient(hwnd, &p);
+
+            if (p.x < 260) {
+                SetTextColor(hdc, RGB(220, 235, 255));
+                return (LRESULT)brushSidebar;
+            }
+
+            SetTextColor(hdc, COR_MUTED);
+            return (LRESULT)brushCard;
+        }
+
+        case WM_CTLCOLOREDIT: {
+            HDC hdc = (HDC)wParam;
+            SetBkColor(hdc, COR_INPUT);
+            SetTextColor(hdc, COR_TEXTO);
+            return (LRESULT)brushInput;
+        }
+
+        case WM_CTLCOLORLISTBOX: {
+            HDC hdc = (HDC)wParam;
+            SetBkColor(hdc, RGB(255,255,255));
+            SetTextColor(hdc, COR_TEXTO);
+            return (LRESULT)brushCard;
+        }
+
+        case WM_COMMAND:
+            switch (LOWORD(wParam)) {
+                case ID_COMBO_BANCO:
+                    if (HIWORD(wParam) == CBN_SELCHANGE) {
+                        bancoAtual = (int)SendMessageA(hComboBanco, CB_GETCURSEL, 0, 0);
+                        if (bancoAtual < 0 || bancoAtual > 3) bancoAtual = 0;
+                        SendMessageA(hComboModelo, CB_SETCURSEL, bancoAtual, 0);
+                        atualizarBancoAtual();
+                    }
+                    break;
+
+                case ID_LISTA:
+                    if (HIWORD(wParam) == LBN_SELCHANGE) {
+                        selecionarDaLista();
+                    }
+                    break;
+
+                case ID_BUSCA:
+                    if (HIWORD(wParam) == EN_CHANGE) {
+                        buscarRegistros();
+                    }
+                    break;
+
+                case ID_BTN_BUSCAR:
+                    buscarRegistros();
+                    break;
+
+                case ID_BTN_LISTAR:
+                    setTexto(hBusca, "");
+                    atualizarLista("");
+                    break;
+
+                case ID_BTN_NOVO:
+                    limparCampos();
+                    break;
+
+                case ID_BTN_SALVAR:
+                    salvarRegistroDaTela();
+                    break;
+
+                case ID_BTN_EXCLUIR:
+                    excluirSelecionado();
+                    break;
+
+                case ID_BTN_LIMPAR:
+                    limparCampos();
+                    break;
+
+                case ID_BTN_CRIAR_BANCO:
+                    abrirBancoPorNome(1);
+                    break;
+
+                case ID_BTN_ENTRAR_BANCO:
+                    abrirBancoPorNome(0);
+                    break;
+
+                case ID_BTN_ABRIR_PASTA:
+                    ShellExecuteA(hwnd, "open", bancos[bancoAtual].pastaBanco, NULL, NULL, SW_SHOWNORMAL);
+                    break;
+            }
+            return 0;
+
+        case WM_DESTROY:
+            destruirObjetos();
+            PostQuitMessage(0);
+            return 0;
+    }
+
+    return DefWindowProcA(hwnd, msg, wParam, lParam);
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    WNDCLASSA wc;
+    MSG msg;
+
+    (void)hPrevInstance;
+    (void)lpCmdLine;
+
+    hInst = hInstance;
+
+    memset(&wc, 0, sizeof(WNDCLASSA));
+
+    wc.lpfnWndProc = JanelaProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "SistemaBancoBonitoEstavel";
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+
+    if (!RegisterClassA(&wc)) {
+        MessageBoxA(NULL, "Erro ao registrar a janela.", "Erro", MB_ICONERROR);
+        return 0;
+    }
+
+    hJanela = CreateWindowExA(
+        0,
+        "SistemaBancoBonitoEstavel",
+        "Sistema de Banco de Dados",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        1065,
+        875,
+        NULL,
+        NULL,
+        hInstance,
+        NULL
+    );
+
+    if (hJanela == NULL) {
+        MessageBoxA(NULL, "Erro ao criar a janela.", "Erro", MB_ICONERROR);
+        return 0;
+    }
+
+    ShowWindow(hJanela, nCmdShow);
+    UpdateWindow(hJanela);
+
+    while (GetMessageA(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessageA(&msg);
+    }
+
+    return (int)msg.wParam;
 }
